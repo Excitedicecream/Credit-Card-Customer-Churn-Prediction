@@ -61,7 +61,7 @@ X_train, X_test, y_train, y_test = train_test_split(X_dummy, y_raw, test_size=0.
 ros = RandomOverSampler(random_state=42)
 X_train_balanced, y_train_balanced = ros.fit_resample(X_train, y_train)
 
-# Feature Importances (top 7)
+# Feature Importances (top 8)
 rf_interpret = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
 rf_interpret.fit(X_dummy, y_raw)
 importances = rf_interpret.feature_importances_
@@ -161,7 +161,7 @@ if page == "📊 Data Preparation":
         st.write("Balanced training set distribution:", pd.Series(y_train_balanced).value_counts().to_dict()) 
 
     @st.cache_data
-    def evaluate_topk_features(_ensemble, feature_ranking, X_train, y_train, X_test, y_test, max_k=9):
+    def evaluate_topk_features(_ensemble, feature_ranking, X_train, y_train, X_test, y_test, max_k=10):
         results = {}
         for k in range(1, max_k + 1):
             top_k_features = feature_ranking[:k]
@@ -190,7 +190,7 @@ if page == "📊 Data Preparation":
         results = evaluate_topk_features(
             ensemble, feature_ranking,
             X_train_balanced, y_train_balanced,
-            X_test, y_test, max_k=9
+            X_test, y_test, max_k=10
         )
 
         for k, acc in results.items():
@@ -218,7 +218,7 @@ if page == "📊 Data Preparation":
 
 # ================= Page 2: Prediction ================= #
 elif page == "🔮 Prediction":
-    st.subheader("🔮 Predict Churn with Top 7 Features")
+    st.subheader("🔮 Predict Churn with Top 8 Features")
 
     friendly_names = {
         "Total_Trans_Amt": "Total Transaction Amount",
