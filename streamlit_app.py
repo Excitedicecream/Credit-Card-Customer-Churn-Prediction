@@ -45,10 +45,10 @@ def load_data():
 
     # Prepare features and labels
     X_raw = df_remove_outliar.drop(['Attrition_Flag', 'CLIENTNUM'], axis=1)
-    y = df['Attrition_Flag']
-    X = pd.get_dummies(X_raw)
+    y_raw = df['Attrition_Flag']
+    X_dummy = pd.get_dummies(X_raw)
 
-    return df, X, y
+    return df, X_dummy, y_raw
 
 df, X_dummy, y_raw = load_data()
 
