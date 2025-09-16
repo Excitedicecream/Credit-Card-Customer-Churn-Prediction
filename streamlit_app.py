@@ -66,7 +66,7 @@ rf_interpret = RandomForestClassifier(n_estimators=100, max_depth=5, random_stat
 rf_interpret.fit(X_dummy, y_raw)
 importances = rf_interpret.feature_importances_
 feat_imp = pd.Series(importances, index=X_dummy.columns).sort_values(ascending=False)
-top7 = feat_imp.head(7).index
+top8 = feat_imp.head(8).index
 
 # Function to train tuned Random Forest
 @st.cache_resource
@@ -92,7 +92,7 @@ param_dist = {
     'min_samples_leaf': [1, 2, 4],
     'bootstrap': [True, False]
 }
-best_rf = train_best_rf(X_train_balanced[top7], y_train_balanced, param_dist)
+best_rf = train_best_rf(X_train_balanced[top8], y_train_balanced, param_dist)
 
 # ================= Page 1: Data Preparation ================= #
 if page == "📊 Data Preparation":
@@ -203,11 +203,11 @@ if page == "📊 Data Preparation":
         ax.set_ylabel("Test Accuracy")
         ax.grid(True)
         st.pyplot(fig)
-        st.write("Based on the plot, using the top 7 features provides a good balance between model simplicity and accuracy.")
+        st.write("Based on the plot, using the top 8 features provides a good balance between model simplicity and accuracy.")
 
     with st.expander("🔧 Hyperparameter Tuning for Random Forest"):
-        X_train_k = X_train_balanced[top7]
-        X_test_k = X_test[top7]
+        X_train_k = X_train_balanced[top8]
+        X_test_k = X_test[top8]
 
         y_pred_best = best_rf.predict(X_test_k)
 
@@ -227,11 +227,12 @@ elif page == "🔮 Prediction":
         "Total_Revolving_Bal": "Revolving Balance",
         "Avg_Utilization_Ratio": "Average Utilization Ratio",
         "Total_Relationship_Count": "Relationship Count",
-        "Total_Amt_Chng_Q4_Q1": "Transaction Amount Change (Q4 vs Q1)"
+        "Total_Amt_Chng_Q4_Q1": "Transaction Amount Change (Q4 vs Q1)",
+        "Credit_Limit": "Credit Limit"
     }
 
     user_input = {}
-    for feature in top7:
+    for feature in top8:
         label = friendly_names.get(feature, feature)
         if np.issubdtype(X_train_balanced[feature].dtype, np.number):
             val = st.slider(
