@@ -51,7 +51,7 @@ def load_data():
     return df_raw, df, X_dummy, y_raw
 
 
-df, X_dummy, y_raw = load_data()
+df_raw, df, X_dummy, y_raw = load_data()
 
 # ---------------- Shared Preparation ---------------- #
 # Train/test split
