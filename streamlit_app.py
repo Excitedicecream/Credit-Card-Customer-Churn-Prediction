@@ -48,7 +48,7 @@ def load_data():
     y_raw = df_remove_outliar['Attrition_Flag']
     X_dummy = pd.get_dummies(X_raw)
 
-    return df_remove_outliar, X_dummy, y_raw
+    return df_raw, df, X_dummy, y_raw
 
 
 df, X_dummy, y_raw = load_data()
@@ -104,8 +104,8 @@ if page == "📊 Data Preparation":
         st.write(X_dummy.head())
         st.write("### Target Variable (Customer Attrition)", y_raw.value_counts().to_dict())
         st.write("NA values in each column, if any", X_dummy.isna().sum()[X_dummy.isna().sum()>0])
-        df_remove_outliar, X_dummy, y_raw = load_data()
-        st.write("Total outliers removed:", len(X_dummy) - len(df_remove_outliar))
+        df_raw, df, X_dummy, y_raw = load_data()
+        st.write("Total outliers removed:", len(df_raw) - len(df))
         
 
     # ---------------- Cached plotting functions ---------------- #
