@@ -99,7 +99,7 @@ if page == "📊 Data Preparation":
 
     with st.expander("🔍 Data Preview & Cleaning", expanded=True):
         st.write("### Raw Data Sample")
-        st.write(df.head())
+        st.write(df_raw.head())
         st.write("### Predictor Variables Sample")
         st.write(X_dummy.head())
         st.write("### Target Variable (Customer Attrition)", y_raw.value_counts().to_dict())
