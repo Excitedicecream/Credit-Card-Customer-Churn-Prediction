@@ -41,10 +41,10 @@ def load_data():
     Q1 = df[numeric_cols].quantile(0.25)
     Q3 = df[numeric_cols].quantile(0.75)
     IQR = Q3 - Q1
-    df = df[~((df[numeric_cols] < (Q1 - 1.5 * IQR)) | (df[numeric_cols] > (Q3 + 1.5 * IQR))).any(axis=1)]
+    df_remove_outliar = df[~((df[numeric_cols] < (Q1 - 1.5 * IQR)) | (df[numeric_cols] > (Q3 + 1.5 * IQR))).any(axis=1)]
 
     # Prepare features and labels
-    X_raw = df.drop(['Attrition_Flag', 'CLIENTNUM'], axis=1)
+    X_raw = df_remove_outliar.drop(['Attrition_Flag', 'CLIENTNUM'], axis=1)
     y = df['Attrition_Flag']
     X = pd.get_dummies(X_raw)
 
@@ -97,10 +97,14 @@ best_rf = train_best_rf(X_train_balanced[top7], y_train_balanced, param_dist)
 if page == "📊 Data Preparation":
 
     with st.expander("🔍 Data Preview & Cleaning", expanded=True):
+        st.write("### Raw Data Sample")
+        st.write(df.head())
         st.write("### Predictor Variables Sample")
         st.write(X_dummy.head())
         st.write("### Target Variable (Customer Attrition)", y_raw.value_counts().to_dict())
         st.write("NA values in each column, if any", X_dummy.isna().sum()[X_dummy.isna().sum()>0])
+        st.write("Total outliers removed:", len(df) - len(df_remove_outliar))
+        
 
     # ---------------- Cached plotting functions ---------------- #
     @st.cache_data
