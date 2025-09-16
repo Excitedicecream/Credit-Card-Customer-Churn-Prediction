@@ -22,7 +22,7 @@ page = st.sidebar.radio("📑 Navigate", ["📊 Data Preparation", "🔮 Predict
 # ---------------- Load Data ---------------- #
 @st.cache_data
 def load_data():
-    df = pd.read_csv("https://raw.githubusercontent.com/Excitedicecream/CSV-Files/refs/heads/master/BankChurners.csv")
+    df = pd.read_csv("https://raw.githubusercontent.com/Excitedicecream/CSV-Files/refs/heads/main/BankChurners.csv")
     le = LabelEncoder()
     df['Attrition_Flag'] = le.fit_transform(df['Attrition_Flag'])
     X_raw = df.drop([
