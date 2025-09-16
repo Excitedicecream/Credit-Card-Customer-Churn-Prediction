@@ -25,29 +25,15 @@ def load_data():
     df = pd.read_csv("https://raw.githubusercontent.com/Excitedicecream/CSV-Files/refs/heads/main/BankChurners.csv")
     le = LabelEncoder()
     df['Attrition_Flag'] = le.fit_transform(df['Attrition_Flag'])
-    
-    # Drop unwanted columns
-    df = df.drop([
-        'CLIENTNUM',
+    X_raw = df.drop([
+        'Attrition_Flag','CLIENTNUM',
         'Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_1',
         'Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_2'
     ], axis=1)
-
-    # ---------------------------
-    # Remove outliers (IQR method)
-    # ---------------------------
-    numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
-    Q1 = df[numeric_cols].quantile(0.25)
-    Q3 = df[numeric_cols].quantile(0.75)
-    IQR = Q3 - Q1
-    df = df[~((df[numeric_cols] < (Q1 - 1.5 * IQR)) | (df[numeric_cols] > (Q3 + 1.5 * IQR))).any(axis=1)]
-
-    # Prepare features and labels
     y = df['Attrition_Flag']
-    X_raw = df.drop(['Attrition_Flag'], axis=1)
     X = pd.get_dummies(X_raw)
-
     return df, X, y
+
 df, X_dummy, y_raw = load_data()
 
 # ---------------- Shared Preparation ---------------- #
