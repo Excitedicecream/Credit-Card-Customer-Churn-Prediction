@@ -230,8 +230,7 @@ elif page == "🔮 Prediction":
         "Total_Amt_Chng_Q4_Q1": "Transaction Amount Change (Q4 vs Q1)",
         "Credit_Limit": "Credit Limit"
     }
-    with st.sidebar:
-        st.header("ℹ️ Feature Descriptions")
+    with st.sidebar.expander("ℹ️ Feature Descriptions", expanded=False):
         user_input = {}
         for feature in top8:
             label = friendly_names.get(feature, feature)
