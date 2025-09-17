@@ -230,20 +230,20 @@ elif page == "🔮 Prediction":
         "Total_Amt_Chng_Q4_Q1": "Transaction Amount Change (Q4 vs Q1)",
         "Credit_Limit": "Credit Limit"
     }
-
-    user_input = {}
-    for feature in top8:
-        label = friendly_names.get(feature, feature)
-        if np.issubdtype(X_train_balanced[feature].dtype, np.number):
-            val = st.slider(
-                label,
-                float(X_train_balanced[feature].min()), 
-                float(X_train_balanced[feature].max()),
-                float(X_train_balanced[feature].median())
-            )
-        else:
-            val = st.selectbox(label, X_train_balanced[feature].unique())
-        user_input[feature] = val
+    with st.sidebar.expander("ℹ️ Feature Descriptions", expanded=False):
+        user_input = {}
+        for feature in top8:
+            label = friendly_names.get(feature, feature)
+            if np.issubdtype(X_train_balanced[feature].dtype, np.number):
+                val = st.slider(
+                    label,
+                    float(X_train_balanced[feature].min()), 
+                    float(X_train_balanced[feature].max()),
+                    float(X_train_balanced[feature].median())
+                )
+            else:
+                val = st.selectbox(label, X_train_balanced[feature].unique())
+            user_input[feature] = val
 
     input_df = pd.DataFrame([user_input])
 
