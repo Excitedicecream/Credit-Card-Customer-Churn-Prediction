@@ -209,4 +209,5 @@ elif page == "🔮 Prediction":
         st.write(f"Confidence: {prediction_proba[prediction]:.2f}")
 
         st.write("### Prediction Details")
-        st.write(f"Existing Customer: {prediction_pro_
+        st.write(f"Existing Customer: {prediction_proba[0]:.2f}, Attrited Customer: {prediction_proba[1]:.2f}")
+
