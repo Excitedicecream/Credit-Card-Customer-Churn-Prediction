@@ -50,7 +50,6 @@ def load_data():
 
     return df_raw, df_remove_outliar, X_dummy, y_raw
 
-
 df_raw, df_remove_outliar, X_dummy, y_raw = load_data()
 
 # ---------------- Shared Preparation ---------------- #
@@ -68,9 +67,16 @@ importances = rf_interpret.feature_importances_
 feat_imp = pd.Series(importances, index=X_dummy.columns).sort_values(ascending=False)
 top8 = feat_imp.head(8).index
 
-# Function to train tuned Random Forest
+# ---------------- Hyperparameter Tuning (Shared) ---------------- #
 @st.cache_resource
-def train_best_rf(X_train, y_train, param_dist):
+def train_best_rf(X_train, y_train):
+    param_dist = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4],
+        'bootstrap': [True, False]
+    }
     rf_base = RandomForestClassifier(random_state=42)
     rf_random = RandomizedSearchCV(
         estimator=rf_base,
@@ -82,17 +88,10 @@ def train_best_rf(X_train, y_train, param_dist):
         n_jobs=-1
     )
     rf_random.fit(X_train, y_train)
-    return rf_random.best_estimator_
+    return rf_random.best_estimator_, rf_random.best_params_
 
-# Pre-train best_rf so it’s ready for prediction page
-param_dist = {
-    'n_estimators': [50, 100, 200],
-    'max_depth': [None, 10, 20, 30],
-    'min_samples_split': [2, 5, 10],
-    'min_samples_leaf': [1, 2, 4],
-    'bootstrap': [True, False]
-}
-best_rf = train_best_rf(X_train_balanced[top8], y_train_balanced, param_dist)
+# Pre-train once, reused everywhere
+best_rf, best_params = train_best_rf(X_train_balanced[top8], y_train_balanced)
 
 # ================= Page 1: Data Preparation ================= #
 if page == "📊 Data Preparation":
@@ -100,19 +99,17 @@ if page == "📊 Data Preparation":
     with st.expander("🔍 Data Preview & Cleaning", expanded=True):
         st.write("### Raw Data Sample")
         st.write(df_raw.head())
-        st.write("Total rows:",len(df_raw))
+        st.write("Total rows:", len(df_raw))
         st.write("### Predictor Variables Sample")
         st.write(X_dummy.head())
         st.write("### Target Variable (Customer Attrition)", y_raw.value_counts().to_dict())
-        st.write("NA values in each column, if any", X_dummy.isna().sum()[X_dummy.isna().sum()>0])
-        df_raw, df_remove_outliar, X_dummy, y_raw = load_data()
+        st.write("NA values in each column, if any", X_dummy.isna().sum()[X_dummy.isna().sum() > 0])
         st.write("Total outliers removed:", len(df_raw) - len(df_remove_outliar))
-        
 
     # ---------------- Cached plotting functions ---------------- #
     @st.cache_data
     def plot_2d_scatter(x_feature, y_feature, X, y):
-        fig, ax = plt.subplots(figsize=(10,6))
+        fig, ax = plt.subplots(figsize=(10, 6))
         sns.scatterplot(data=X, x=x_feature, y=y_feature, hue=y, palette='Set1', alpha=0.7, ax=ax)
         ax.set_title(f"2D Scatter Plot of {x_feature} vs {y_feature}")
         ax.set_xlabel(x_feature)
@@ -149,7 +146,7 @@ if page == "📊 Data Preparation":
         st.write(feat_imp.head(10))
 
         # Plot Feature Importances
-        fig, ax = plt.subplots(figsize=(10,6))
+        fig, ax = plt.subplots(figsize=(10, 6))
         feat_imp.head(10).plot(kind='bar', ax=ax)
         ax.set_title("Top 10 Feature Importances (Random Forest)")
         ax.set_ylabel("Importance Score")
@@ -158,62 +155,16 @@ if page == "📊 Data Preparation":
     with st.expander("⚙️ Train/Test Split & Balancing"):
         st.write("### After Balancing")
         st.write("X_train shape:", X_train_balanced.shape)
-        st.write("Balanced training set distribution:", pd.Series(y_train_balanced).value_counts().to_dict()) 
-
-    @st.cache_data
-    def evaluate_topk_features(_ensemble, feature_ranking, X_train, y_train, X_test, y_test, max_k=10):
-        results = {}
-        for k in range(1, max_k + 1):
-            top_k_features = feature_ranking[:k]
-            X_train_k = X_train.iloc[:, top_k_features]
-            X_test_k = X_test.iloc[:, top_k_features]
-            _ensemble.fit(X_train_k, y_train)
-            y_pred_k = _ensemble.predict(X_test_k)
-            acc = accuracy_score(y_test, y_pred_k)
-            results[k] = acc
-        return results
-
-    with st.expander("📊 Baseline Ensemble Model Results"):
-        rf = RandomForestClassifier(random_state=42)
-        lr = LogisticRegression(max_iter=1000, random_state=42, solver='liblinear')
-        gb = GradientBoostingClassifier(random_state=42)
-
-        ensemble = VotingClassifier(
-            estimators=[('rf', rf), ('lr', lr), ('gb', gb)],
-            voting='soft'
-        )
-        ensemble.fit(X_train_balanced, y_train_balanced)
-
-        importances = rf.fit(X_train_balanced, y_train_balanced).feature_importances_
-        feature_ranking = np.argsort(importances)[::-1]
-
-        results = evaluate_topk_features(
-            ensemble, feature_ranking,
-            X_train_balanced, y_train_balanced,
-            X_test, y_test, max_k=10
-        )
-
-        for k, acc in results.items():
-            st.write(f"Top {k} features test accuracy: {acc:.4f}")
-
-        fig, ax = plt.subplots(figsize=(8,5))
-        ax.plot(list(results.keys()), list(results.values()), marker="o")
-        ax.set_title("Model Accuracy vs. Number of Top Features")
-        ax.set_xlabel("Number of Top Features Used")
-        ax.set_ylabel("Test Accuracy")
-        ax.grid(True)
-        st.pyplot(fig)
-        st.write("Based on the plot, using the top 8 features provides a good balance between model simplicity and accuracy.")
+        st.write("Balanced training set distribution:", pd.Series(y_train_balanced).value_counts().to_dict())
 
     with st.expander("🔧 Hyperparameter Tuning for Random Forest"):
-        X_train_k = X_train_balanced[top8]
         X_test_k = X_test[top8]
-
         y_pred_best = best_rf.predict(X_test_k)
 
+        st.write("**Best Hyperparameters Found:**", best_params)
         st.write("Tuned Random Forest Test Accuracy:", accuracy_score(y_test, y_pred_best))
         st.text("Classification Report:\n" + classification_report(
-            y_test, y_pred_best, target_names=['Existing Customer','Attrited Customer']
+            y_test, y_pred_best, target_names=['Existing Customer', 'Attrited Customer']
         ))
 
 # ================= Page 2: Prediction ================= #
@@ -258,4 +209,4 @@ elif page == "🔮 Prediction":
         st.write(f"Confidence: {prediction_proba[prediction]:.2f}")
 
         st.write("### Prediction Details")
-        st.write(f"Existing Customer: {prediction_proba[0]:.2f}, Attrited Customer: {prediction_proba[1]:.2f}")
+        st.write(f"Existing Customer: {prediction_pro_
