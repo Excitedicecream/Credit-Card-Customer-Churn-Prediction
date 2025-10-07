@@ -44,7 +44,7 @@ def load_data():
         'Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_2'
     ], axis=1)
 
-    df['Attrition_Flag'] = le.fit_transform(df['Attrition_Flag'])
+    df['Attrition_Flag'] = df['Attrition_Flag'].map({'Attrited Customer': 0, 'Existing Customer': 1})
 
     # Remove outliers (IQR method)
     numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.drop('Attrition_Flag')
@@ -118,6 +118,37 @@ if page == "📊 Data Preparation":
         ax.set_title("Top 10 Feature Importances (Random Forest)")
         ax.set_ylabel("Importance Score")
         st.pyplot(fig)
+        
+    with st.expander("⚙️ Feature Correlation (Top 10 Features Only)", expanded=True):
+        st.write("### 🔍 Correlation Direction with Attrition_Flag")
+        st.write(
+            "This table shows how the top 10 most important features relate to customer retention."
+        )
+        st.write(
+            "🟥 Positive correlation → Retention factor (customers more likely to stay)\n"
+            "🟩 Negative correlation → Churn risk (customers more likely to leave)"
+        )
+
+        # Ensure 'Attrition_Flag' exists and is numeric (0/1)
+        if 'Attrition_Flag' in df_clean.columns:
+            # Get top 10 feature names from feature importance
+            top10_features = feat_imp.head(10).index.tolist()
+
+            # Compute correlation with Attrition_Flag
+            corr = df_clean[top10_features + ['Attrition_Flag']].corr()['Attrition_Flag'].drop('Attrition_Flag')
+
+            # Create DataFrame for display
+            corr_df = pd.DataFrame({
+                'Feature': corr.index,
+                'Correlation': corr.values,
+                'Direction': ['🟥 Positive (Retention)' if val > 0 else '🟩 Negative (Churn Risk)' for val in corr.values]
+            }).sort_values(by='Correlation', ascending=False)
+
+            st.dataframe(corr_df.reset_index(drop=True))
+        else:
+            st.warning("⚠️ 'Attrition_Flag' column not found or not numeric.")
+
+
 
     with st.expander("🔧 Hyperparameter Tuning for Random Forest"):
         X_test_k = X_test[top8]
@@ -126,21 +157,47 @@ if page == "📊 Data Preparation":
         st.write("**Best Parameters Found:**", best_params)
         st.write("**Test Accuracy:**", round(accuracy_score(y_test, y_pred_best), 3))
         st.text("Classification Report:\n" + classification_report(
-            y_test, y_pred_best, target_names=['Existing Customer', 'Attrited Customer']
-        ))
+            y_test, y_pred_best, target_names=['Attrited Customer', 'Existing Customer']))
+
 
     st.markdown("---")
-    st.subheader("💡 Key Feature Insights")
-    st.markdown("""
-    - **Total_Trans_Amt** ↑ → Less churn (loyal high spenders)  
-    - **Total_Trans_Ct** ↑ → Less churn (frequent transactions = engagement)  
-    - **Total_Ct_Chng_Q4_Q1** ↓ → More churn (drop in activity = warning sign)  
-    - **Total_Revolving_Bal** ↑ → More churn (financial stress or dissatisfaction)  
-    - **Avg_Utilization_Ratio** ↑ → More churn (heavy credit use = stress)  
-    - **Total_Relationship_Count** ↑ → Less churn (diverse relationship = loyalty)  
-    - **Total_Amt_Chng_Q4_Q1** ↓ → More churn (spending drop = disengagement)  
-    - **Credit_Limit** ↑ → Less churn (premium users stay longer)
-    """)
+    st.subheader("💡 Key Factors in Retaining Customers")
+
+    # Split table: Factors that increase retention vs increase churn
+    st.write("### 🔼 Increase → Retain Customers")
+    st.table(pd.DataFrame({
+        "Feature": [
+            "Total_Trans_Ct",
+            "Total_Ct_Chng_Q4_Q1",
+            "Total_Trans_Amt",
+            "Total_Revolving_Bal",
+            "Avg_Utilization_Ratio",
+            "Total_Relationship_Count",
+            "Total_Amt_Chng_Q4_Q1",
+            "Credit_Limit",
+            "Avg_Open_To_Buy",
+        ],
+        "Effect": [
+            "Frequent transactions show engagement and satisfaction",
+            "Increase in quarterly transactions signals higher loyalty",
+            "Higher spending indicates active and valuable customers",
+            "Larger revolving balances may reflect trust in using credit",
+            "Higher utilization ratio shows consistent account activity",
+            "More relationships or products increase customer stickiness",
+            "Growth in transaction amounts reflects confidence in the bank",
+            "Higher credit limits reduce churn risk for premium users",
+            "More available credit suggests financial stability and retention",
+        ]
+    }))
+
+    st.write("### 🔽 Decrease → Risk of Churn")
+    st.table(pd.DataFrame({
+        "Feature": ["Months_Inactive_12_mon"],
+        "Effect": ["Drop in monthly activity strongly signals disengagement or churn risk"],
+    }))
+
+
+   
 
 # ================= Page 2: Prediction ================= #
 elif page == "🔮 Prediction":
@@ -175,7 +232,6 @@ elif page == "🔮 Prediction":
         prediction_proba = best_rf.predict_proba(input_df)[0]
 
         st.subheader("🧭 Prediction Result")
-        st.write("**Attrited Customer**" if prediction == 1 else "**Existing Customer**")
+        st.write("**Existing Customer**" if prediction == 1 else "**Attrited Customer**")
         st.write(f"Confidence: {prediction_proba[prediction]:.2f}")
-        st.write(f"Existing Customer: {prediction_proba[0]:.2f} | Attrited Customer: {prediction_proba[1]:.2f}")
-
+        st.write(f"Attrited Customer: {prediction_proba[0]:.2f} | Existing Customer: {prediction_proba[1]:.2f}")
