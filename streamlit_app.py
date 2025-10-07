@@ -125,8 +125,8 @@ if page == "📊 Data Preparation":
             "This table shows how the top 10 most important features relate to customer retention."
         )
         st.write(
-            "🟥 Positive correlation → Retention factor (customers more likely to stay)\n"
-            "🟩 Negative correlation → Churn risk (customers more likely to leave)"
+            "🟩 Positive correlation → Retention factor (customers more likely to stay)\n"
+            "🟥 Negative correlation → Churn risk (customers more likely to leave)"
         )
 
         # Ensure 'Attrition_Flag' exists and is numeric (0/1)
