@@ -6,18 +6,32 @@ import seaborn as sns
 import plotly.express as px
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import VotingClassifier, RandomForestClassifier, GradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 from imblearn.over_sampling import RandomOverSampler
 
 # ---------------- Streamlit Config ---------------- #
 st.set_page_config(page_title="Churn Prediction", layout="wide")
-st.title("Credit Card Customer Churn Prediction")
-st.write("This app analyzes feature importances using an ensemble model (Random Forest, Logistic Regression, Gradient Boosting) to predict churn.") 
+st.title("💳 Credit Card Customer Churn Prediction")
+st.write("This app analyzes key features using an ensemble model to predict customer churn.")
 
 # ---------------- Sidebar Navigation ---------------- #
-page = st.sidebar.radio("📑 Navigate", ["📊 Data Preparation", "🔮 Prediction"])
+st.sidebar.header("📑 Navigation")
+page = st.sidebar.radio("", ["📊 Data Preparation", "🔮 Prediction"])
+
+st.sidebar.markdown("---")
+st.sidebar.header("👤 About the Creator")
+st.sidebar.markdown(
+    """
+**Jonathan Wong Tze Syuen**  
+📚 Data Science  
+
+🔗 [Connect on LinkedIn](https://www.linkedin.com/in/jonathan-wong-2b9b39233/)
+
+🔗 [Connect on Github](https://github.com/Excitedicecream)
+"""
+)
+st.sidebar.markdown("---")
 
 # ---------------- Load Data ---------------- #
 @st.cache_data
@@ -25,49 +39,39 @@ def load_data():
     df_raw = pd.read_csv("https://raw.githubusercontent.com/Excitedicecream/CSV-Files/refs/heads/main/BankChurners.csv")
     le = LabelEncoder()
 
-    # Drop unwanted columns
     df = df_raw.drop([
         'Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_1',
         'Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_2'
     ], axis=1)
 
-    # Encode target
     df['Attrition_Flag'] = le.fit_transform(df['Attrition_Flag'])
 
-    # ---------------------------
     # Remove outliers (IQR method)
-    # ---------------------------
     numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.drop('Attrition_Flag')
-    Q1 = df[numeric_cols].quantile(0.25)
-    Q3 = df[numeric_cols].quantile(0.75)
+    Q1, Q3 = df[numeric_cols].quantile(0.25), df[numeric_cols].quantile(0.75)
     IQR = Q3 - Q1
-    df_remove_outliar = df[~((df[numeric_cols] < (Q1 - 1.5 * IQR)) | (df[numeric_cols] > (Q3 + 1.5 * IQR))).any(axis=1)]
+    df_no_outlier = df[~((df[numeric_cols] < (Q1 - 1.5 * IQR)) | (df[numeric_cols] > (Q3 + 1.5 * IQR))).any(axis=1)]
 
-    # Prepare features and labels
-    X_raw = df_remove_outliar.drop(['Attrition_Flag', 'CLIENTNUM'], axis=1)
-    y_raw = df_remove_outliar['Attrition_Flag']
-    X_dummy = pd.get_dummies(X_raw)
+    X = df_no_outlier.drop(['Attrition_Flag', 'CLIENTNUM'], axis=1)
+    y = df_no_outlier['Attrition_Flag']
+    X_dummy = pd.get_dummies(X)
 
-    return df_raw, df_remove_outliar, X_dummy, y_raw
+    return df_raw, df_no_outlier, X_dummy, y
 
-df_raw, df_remove_outliar, X_dummy, y_raw = load_data()
+df_raw, df_clean, X_dummy, y_raw = load_data()
 
 # ---------------- Shared Preparation ---------------- #
-# Train/test split
 X_train, X_test, y_train, y_test = train_test_split(X_dummy, y_raw, test_size=0.2, random_state=42)
 
-# Balance dataset
 ros = RandomOverSampler(random_state=42)
 X_train_balanced, y_train_balanced = ros.fit_resample(X_train, y_train)
 
-# Feature Importances (top 8)
-rf_interpret = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
-rf_interpret.fit(X_dummy, y_raw)
-importances = rf_interpret.feature_importances_
-feat_imp = pd.Series(importances, index=X_dummy.columns).sort_values(ascending=False)
+rf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+rf.fit(X_dummy, y_raw)
+feat_imp = pd.Series(rf.feature_importances_, index=X_dummy.columns).sort_values(ascending=False)
 top8 = feat_imp.head(8).index
 
-# ---------------- Hyperparameter Tuning (Shared) ---------------- #
+# ---------------- Hyperparameter Tuning ---------------- #
 @st.cache_resource
 def train_best_rf(X_train, y_train):
     param_dist = {
@@ -90,7 +94,6 @@ def train_best_rf(X_train, y_train):
     rf_random.fit(X_train, y_train)
     return rf_random.best_estimator_, rf_random.best_params_
 
-# Pre-train once, reused everywhere
 best_rf, best_params = train_best_rf(X_train_balanced[top8], y_train_balanced)
 
 # ================= Page 1: Data Preparation ================= #
@@ -98,74 +101,46 @@ if page == "📊 Data Preparation":
 
     with st.expander("🔍 Data Preview & Cleaning", expanded=True):
         st.write("### Raw Data Sample")
-        st.write(df_raw.head())
-        st.write("Total rows:", len(df_raw))
-        st.write("### Predictor Variables Sample")
-        st.write(X_dummy.head())
-        st.write("### Target Variable (Customer Attrition)", y_raw.value_counts().to_dict())
-        st.write("NA values in each column, if any", X_dummy.isna().sum()[X_dummy.isna().sum() > 0])
-        st.write("Total outliers removed:", len(df_raw) - len(df_remove_outliar))
-
-    # ---------------- Cached plotting functions ---------------- #
-    @st.cache_data
-    def plot_2d_scatter(x_feature, y_feature, X, y):
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(data=X, x=x_feature, y=y_feature, hue=y, palette='Set1', alpha=0.7, ax=ax)
-        ax.set_title(f"2D Scatter Plot of {x_feature} vs {y_feature}")
-        ax.set_xlabel(x_feature)
-        ax.set_ylabel(y_feature)
-        ax.legend(title='Churn', labels=['No Churn', 'Churn'])
-        return fig
-
-    @st.cache_data
-    def plot_3d_scatter(x_feature, y_feature, z_feature, X, y):
-        fig = px.scatter_3d(
-            X, x=x_feature, y=y_feature, z=z_feature,
-            color=y.map({0: 'No Churn', 1: 'Churn'}),
-            title=f"3D Scatter Plot of {x_feature}, {y_feature}, and {z_feature}",
-            labels={'color': 'Churn'}
-        )
-        fig.update_traces(marker=dict(size=5))
-        return fig
-
-    with st.expander("2D Visualization of Features"):
-        x_2d = st.selectbox("Select X-axis feature", X_dummy.columns, index=0)
-        y_2d = st.selectbox("Select Y-axis feature", X_dummy.columns, index=1)
-        fig2d = plot_2d_scatter(x_2d, y_2d, X_dummy, y_raw)
-        st.pyplot(fig2d)
-
-    with st.expander("3D Visualization of Features"):
-        x_3d = st.selectbox("Select X-axis feature for 3D", X_dummy.columns, index=0, key='x3d')
-        y_3d = st.selectbox("Select Y-axis feature for 3D", X_dummy.columns, index=1, key='y3d')
-        z_3d = st.selectbox("Select Z-axis feature for 3D", X_dummy.columns, index=2, key='z3d')
-        fig3d = plot_3d_scatter(x_3d, y_3d, z_3d, X_dummy, y_raw)
-        st.plotly_chart(fig3d)
+        st.dataframe(df_raw.head())
+        st.write("**Total rows:**", len(df_raw))
+        st.write("### Processed Data Sample")
+        st.dataframe(X_dummy.head())
+        st.write("### Target Variable Distribution")
+        st.write(y_raw.value_counts().to_dict())
+        st.write("**Outliers Removed:**", len(df_raw) - len(df_clean))
 
     with st.expander("⚙️ Feature Importance Analysis"):
-        st.write("Top 10 Feature Importances:")
-        st.write(feat_imp.head(10))
+        st.write("Top 10 Important Features:")
+        st.dataframe(feat_imp.head(10))
 
-        # Plot Feature Importances
         fig, ax = plt.subplots(figsize=(10, 6))
-        feat_imp.head(10).plot(kind='bar', ax=ax)
+        feat_imp.head(10).plot(kind='bar', ax=ax, color='skyblue')
         ax.set_title("Top 10 Feature Importances (Random Forest)")
         ax.set_ylabel("Importance Score")
         st.pyplot(fig)
-
-    with st.expander("⚙️ Train/Test Split & Balancing"):
-        st.write("### After Balancing")
-        st.write("X_train shape:", X_train_balanced.shape)
-        st.write("Balanced training set distribution:", pd.Series(y_train_balanced).value_counts().to_dict())
 
     with st.expander("🔧 Hyperparameter Tuning for Random Forest"):
         X_test_k = X_test[top8]
         y_pred_best = best_rf.predict(X_test_k)
 
-        st.write("**Best Hyperparameters Found:**", best_params)
-        st.write("Tuned Random Forest Test Accuracy:", accuracy_score(y_test, y_pred_best))
+        st.write("**Best Parameters Found:**", best_params)
+        st.write("**Test Accuracy:**", round(accuracy_score(y_test, y_pred_best), 3))
         st.text("Classification Report:\n" + classification_report(
             y_test, y_pred_best, target_names=['Existing Customer', 'Attrited Customer']
         ))
+
+    st.markdown("---")
+    st.subheader("💡 Key Feature Insights")
+    st.markdown("""
+    - **Total_Trans_Amt** ↑ → Less churn (loyal high spenders)  
+    - **Total_Trans_Ct** ↑ → Less churn (frequent transactions = engagement)  
+    - **Total_Ct_Chng_Q4_Q1** ↓ → More churn (drop in activity = warning sign)  
+    - **Total_Revolving_Bal** ↑ → More churn (financial stress or dissatisfaction)  
+    - **Avg_Utilization_Ratio** ↑ → More churn (heavy credit use = stress)  
+    - **Total_Relationship_Count** ↑ → Less churn (diverse relationship = loyalty)  
+    - **Total_Amt_Chng_Q4_Q1** ↓ → More churn (spending drop = disengagement)  
+    - **Credit_Limit** ↑ → Less churn (premium users stay longer)
+    """)
 
 # ================= Page 2: Prediction ================= #
 elif page == "🔮 Prediction":
@@ -181,33 +156,26 @@ elif page == "🔮 Prediction":
         "Total_Amt_Chng_Q4_Q1": "Transaction Amount Change (Q4 vs Q1)",
         "Credit_Limit": "Credit Limit"
     }
-    with st.sidebar.expander("ℹ️ Feature Descriptions", expanded=False):
-        user_input = {}
-        for feature in top8:
-            label = friendly_names.get(feature, feature)
-            if np.issubdtype(X_train_balanced[feature].dtype, np.number):
-                val = st.slider(
-                    label,
-                    float(X_train_balanced[feature].min()), 
-                    float(X_train_balanced[feature].max()),
-                    float(X_train_balanced[feature].median())
-                )
-            else:
-                val = st.selectbox(label, X_train_balanced[feature].unique())
-            user_input[feature] = val
+
+    user_input = {}
+    for feature in top8:
+        label = friendly_names.get(feature, feature)
+        val = st.slider(
+            label,
+            float(X_train_balanced[feature].min()),
+            float(X_train_balanced[feature].max()),
+            float(X_train_balanced[feature].median())
+        )
+        user_input[feature] = val
 
     input_df = pd.DataFrame([user_input])
 
-    prediction, prediction_proba = None, None
     if st.button("Predict Churn"):
         prediction = best_rf.predict(input_df)[0]
         prediction_proba = best_rf.predict_proba(input_df)[0]
 
-    if prediction is not None:
-        st.subheader("Prediction Result")
+        st.subheader("🧭 Prediction Result")
         st.write("**Attrited Customer**" if prediction == 1 else "**Existing Customer**")
         st.write(f"Confidence: {prediction_proba[prediction]:.2f}")
-
-        st.write("### Prediction Details")
-        st.write(f"Existing Customer: {prediction_proba[0]:.2f}, Attrited Customer: {prediction_proba[1]:.2f}")
+        st.write(f"Existing Customer: {prediction_proba[0]:.2f} | Attrited Customer: {prediction_proba[1]:.2f}")
 
