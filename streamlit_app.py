@@ -141,7 +141,7 @@ if page == "📊 Data Preparation":
             corr_df = pd.DataFrame({
                 'Feature': corr.index,
                 'Correlation': corr.values,
-                'Direction': ['🟥 Positive (Retention)' if val > 0 else '🟩 Negative (Churn Risk)' for val in corr.values]
+                'Direction': ['🟩 Positive (Retention)' if val > 0 else '🟥 Negative (Churn Risk)' for val in corr.values]
             }).sort_values(by='Correlation', ascending=False)
 
             st.dataframe(corr_df.reset_index(drop=True))
