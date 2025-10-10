@@ -16,22 +16,17 @@ st.title("💳 Credit Card Customer Churn Prediction")
 st.write("This app analyzes key features using an ensemble model to predict customer churn.")
 
 # ---------------- Sidebar Navigation ---------------- #
-st.sidebar.header("📑 Navigation")
-page = st.sidebar.radio("", ["📊 Data Preparation", "🔮 Prediction"])
-
 st.sidebar.markdown("---")
 st.sidebar.header("👤 About the Creator")
 st.sidebar.markdown(
     """
-**Jonathan Wong Tze Syuen**  
+**Jonathan Wong**  
 📚 Data Science  
 
-🔗 [Connect on LinkedIn](https://www.linkedin.com/in/jonathan-wong-2b9b39233/)
-
-🔗 [Connect on Github](https://github.com/Excitedicecream)
+🔗 [LinkedIn](https://www.linkedin.com/in/jonathan-wong-2b9b39233/)  
+🔗 [GitHub](https://github.com/Excitedicecream)
 """
 )
-st.sidebar.markdown("---")
 
 # ---------------- Load Data ---------------- #
 @st.cache_data
