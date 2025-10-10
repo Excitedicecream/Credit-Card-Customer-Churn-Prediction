@@ -16,6 +16,10 @@ st.title("💳 Credit Card Customer Churn Prediction")
 st.write("This app analyzes key features using an ensemble model to predict customer churn.")
 
 # ---------------- Sidebar Navigation ---------------- #
+st.sidebar.header("📑 Navigation")
+page = st.sidebar.radio("", ["📊 Data Preparation", "🔮 Prediction"])
+
+# Sidebar Author Info
 st.sidebar.markdown("---")
 st.sidebar.header("👤 About the Creator")
 st.sidebar.markdown(
